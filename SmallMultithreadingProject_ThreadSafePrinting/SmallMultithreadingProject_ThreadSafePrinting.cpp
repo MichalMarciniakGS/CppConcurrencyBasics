@@ -1,6 +1,7 @@
 ﻿#include <iostream>
 #include <thread>
 #include <syncstream>
+#include <vector>
 
 int main()
 {
@@ -10,36 +11,28 @@ int main()
         std::cout << "Thread: " << std::this_thread::get_id() << " is working. \n";
         };
 
-    std::thread t1(printIsWorking);
-    std::thread t2(printIsWorking);
-    std::thread t3(printIsWorking);
-    std::thread t4(printIsWorking);
-    std::thread t5(printIsWorking);
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < 5; i++) {
+        threads.emplace_back(printIsWorking);
+    }
+    for (auto& t : threads) {
+        t.join();
+    }
 
-    t1.join();
-    t2.join();
-    t3.join();
-    t4.join();
-    t5.join();
+    std::cout << "End of normal thread cout \n\n";
 
-    std::cout << "End of normal thread cout \n";
-
-
-    std::jthread tj1(printIsWorking);
-    std::jthread tj2(printIsWorking);
-    std::jthread tj3(printIsWorking);
-    std::jthread tj4(printIsWorking);
-    std::jthread tj5(printIsWorking);
 
     // join not needed, automatical join in jthread destructor. However want them to end before osync ones
 
-    tj1.join();
-    tj2.join();
-    tj3.join();
-    tj4.join();
-    tj5.join();
+    std::vector<std::jthread> jthreads;
+    for (size_t i = 0; i < 5; i++) {
+        jthreads.emplace_back(printIsWorking);
+    }
+    for (auto& jt : jthreads) {
+        jt.join();
+    }
 
-    std::cout << "End of jthread cout \n" << std::endl;
+    std::cout << "End of jthread cout \n\n";
 
     auto osyncPrintIsWorking = []() {
         std::osyncstream(std::cout) << "Osync! Thread: " << std::this_thread::get_id() << " is working. \n";
