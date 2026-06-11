@@ -16,7 +16,6 @@ The main goals of this repository are:
 
 - Create a public record of learning and progress over time
 
-What this repository contains
 This is a multi-project repository.
 
 Each subfolder is a separate small exercise, experiment, or mini-project focused on one concurrency topic. Most folders should contain their own code, a short local README.
