@@ -1,0 +1,28 @@
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.slnx
+
+# Build output
+Debug/
+Release/
+x64/
+x86/
+*.exe
+*.pdb
+*.ipch
+*.obj
+*.idb
+
+# IntelliSense / Browse databases
+*.db
+*.db-shm
+*.db-wal
+ipch/
+
+# CMake
+CMakeSettings.json
+out/
