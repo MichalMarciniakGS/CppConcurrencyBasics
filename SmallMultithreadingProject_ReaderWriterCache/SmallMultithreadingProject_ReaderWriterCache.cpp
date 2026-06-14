@@ -6,9 +6,9 @@
 #include <shared_mutex>
 #include <vector>
 #include <thread>
-#include <syncstream>
 #include <chrono>
 #include <functional>
+#include <list>
 
 class SharedCache {
 
@@ -26,12 +26,21 @@ public:
 
     void put(std::string key, std::string value) {
         std::unique_lock lock(mtx_);
-        cache_.insert_or_assign(std::move(key), std::move(value));
+        auto [it, inserted] = cache_.insert_or_assign(std::move(key), std::move(value));
+        if (inserted) {
+            cacheOrder_.push_back(it->first);
+            if (cache_.size() > max_size) {
+                auto oldestVal = cacheOrder_.front();
+                cache_.erase(oldestVal);
+                cacheOrder_.pop_front();
+            }
+        }
     }
 
     void remove(const std::string& key) {
         std::unique_lock lock(mtx_);
         cache_.erase(key);
+        cacheOrder_.remove(key);
     }
 
     template<std::invocable Factory>
@@ -53,9 +62,16 @@ public:
             if (it != cache_.end()) {
                 return it->second;
             }
-
         
             cache_.insert_or_assign(key, newValue);
+            cacheOrder_.push_back(key);
+
+            if (cache_.size() > max_size) {
+                auto oldestVal = cacheOrder_.front();
+                cache_.erase(oldestVal);
+                cacheOrder_.pop_front();
+            }
+
             return newValue;
 
         }
@@ -65,7 +81,9 @@ public:
 
 private:
     std::map<std::string, std::string> cache_;
+    std::list<std::string> cacheOrder_;
     mutable std::shared_mutex mtx_;
+    static constexpr size_t max_size = 3;
 
 };
 
@@ -113,6 +131,17 @@ std::chrono::duration<double, std::milli> testReadsTime(CacheType& cache, int nu
 int main()
 {
     SharedCache sC;
+
+    //Testing max_size
+    sC.put("a", "1");
+    sC.put("b", "2");
+    sC.put("c", "3");
+    sC.put("d", "4");
+
+    std::cout << sC.get("a").value_or("removed") << "\n"; // this should be removed
+    std::cout << sC.get("b").value_or("removed") << "\n";
+    std::cout << sC.get("c").value_or("removed") << "\n";
+    std::cout << sC.get("d").value_or("removed") << "\n";
 
     //Testing get_or_insert template function
 
