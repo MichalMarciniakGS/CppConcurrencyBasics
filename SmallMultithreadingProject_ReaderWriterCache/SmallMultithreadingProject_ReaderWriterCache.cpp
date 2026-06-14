@@ -8,6 +8,7 @@
 #include <thread>
 #include <syncstream>
 #include <chrono>
+#include <functional>
 
 class SharedCache {
 
@@ -31,6 +32,33 @@ public:
     void remove(const std::string& key) {
         std::unique_lock lock(mtx_);
         cache_.erase(key);
+    }
+
+    template<std::invocable Factory>
+    std::string get_or_insert(const std::string& key, Factory factory) {
+        {
+            std::shared_lock lock(mtx_);
+            auto it = cache_.find(key);
+            if (it != cache_.end()) {
+                return it->second;
+            }
+        }
+
+        {
+            std::string newValue = factory();
+
+            std::unique_lock lock(mtx_);
+
+            auto it = cache_.find(key);
+            if (it != cache_.end()) {
+                return it->second;
+            }
+
+        
+            cache_.insert_or_assign(key, newValue);
+            return newValue;
+
+        }
     }
 
 
@@ -85,6 +113,25 @@ std::chrono::duration<double, std::milli> testReadsTime(CacheType& cache, int nu
 int main()
 {
     SharedCache sC;
+
+    //Testing get_or_insert template function
+
+    //miss path
+    auto firstRun = sC.get_or_insert("user1", []() {
+        std::cout << "factory was used, inserting value for user1 \n";
+        return "Alice";
+        });
+    std::cout << "user1: " << firstRun << "\n"; // Will print Alice
+
+    //hit path
+    auto secondRun = sC.get_or_insert("user1", []() {
+        std::cout << "factory was used, inserting value for user1 \n"; // Won't print, since user1 is found already
+        return "Bob";
+        });
+    std::cout << "user1: " << secondRun << "\n"; // Will still print Alice
+
+
+    //Time comparison Shared vs Exclusive:
     ExclusiveCache eC;
 
     sC.put("key0", "val0");
