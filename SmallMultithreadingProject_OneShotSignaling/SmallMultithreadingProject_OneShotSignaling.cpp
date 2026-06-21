@@ -5,13 +5,16 @@
 
 using namespace std::chrono_literals;
 
-std::mutex mutex_;
+std::mutex mtx;
 std::condition_variable condVar;
 bool ready = false;
 
 void workerFunction() {
     std::cout << "Worker: waiting for start signal \n";
-    std::this_thread::sleep_for(1s);
+
+    std::unique_lock<std::mutex> lock(mtx);
+    condVar.wait(lock, []() {return ready;});
+
     std::cout << "Worker: received start signal, doing work \n";
 }
 
@@ -27,13 +30,15 @@ int main()
     std::cout << "Main: preparing... \n";
     std::this_thread::sleep_for(1s);
 
-    //Main thread sleep
-    std::this_thread::sleep_for(1s);
-
     //Main thread sends signal
     std::cout << "Main: sending start signal \n";
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        ready = true;
+    }
 
     //Worker proceeds
+    condVar.notify_one();
 
     //Main thread joins the worker
     workerThread.join();
